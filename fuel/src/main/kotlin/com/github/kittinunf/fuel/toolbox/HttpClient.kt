@@ -19,12 +19,14 @@ class HttpClient : Client {
         try {
             connection.apply {
                 val timeout = Fuel.testConfiguration.timeout?.let { if (it == -1) Int.MAX_VALUE else it } ?: request.timeoutInMillisecond
+                val timeoutRead = Fuel.testConfiguration.timeoutRead?.let { if (it == -1) Int.MAX_VALUE else it } ?: request.timeoutReadInMillisecond
                 connectTimeout = timeout
-                readTimeout = timeout
+                readTimeout = timeoutRead
                 doInput = true
                 useCaches = false
                 requestMethod = request.httpMethod.value
                 setDoOutput(connection, request.httpMethod)
+                instanceFollowRedirects = false
                 for ((key, value) in request.httpHeaders) {
                     setRequestProperty(key, value)
                 }
@@ -97,7 +99,7 @@ class HttpClient : Client {
 
     private fun setDoOutput(connection: HttpURLConnection, method: Method) {
         when (method) {
-            Method.GET, Method.DELETE -> connection.doOutput = false
+            Method.GET, Method.DELETE, Method.HEAD -> connection.doOutput = false
             Method.POST, Method.PUT, Method.PATCH -> connection.doOutput = true
         }
     }

@@ -1,12 +1,12 @@
 # Fuel
 
-[ ![Kotlin](https://img.shields.io/badge/Kotlin-1.0.1-blue.svg)](http://kotlinlang.org) [ ![jcenter](https://api.bintray.com/packages/kittinunf/maven/Fuel-Android/images/download.svg) ](https://bintray.com/kittinunf/maven/Fuel-Android/_latestVersion) [![Build Status](https://travis-ci.org/kittinunf/Fuel.svg?branch=master)](https://travis-ci.org/kittinunf/Fuel)
+[ ![Kotlin](https://img.shields.io/badge/Kotlin-1.0.2-blue.svg)](http://kotlinlang.org) [ ![jcenter](https://api.bintray.com/packages/kittinunf/maven/Fuel-Android/images/download.svg) ](https://bintray.com/kittinunf/maven/Fuel-Android/_latestVersion) [![Build Status](https://travis-ci.org/kittinunf/Fuel.svg?branch=master)](https://travis-ci.org/kittinunf/Fuel)
 
 The easiest HTTP networking library for Kotlin/Android.
 
 ## Features
 
-- [x] Support basic HTTP GET/POST/PUT/DELETE in a fluent style interface
+- [x] Support basic HTTP GET/POST/PUT/DELETE/HEAD in a fluent style interface
 - [x] Support both asynchronous and blocking requests
 - [x] Download file
 - [x] Upload file (multipart/form-data)
@@ -37,9 +37,9 @@ repositories {
 }
 
 dependencies {
-    compile 'com.github.kittinunf.fuel:fuel:1.2.0' //for JVM
-    compile 'com.github.kittinunf.fuel:fuel-android:1.2.0' //for Android
-    compile 'com.github.kittinunf.fuel:fuel-rxjava:1.2.0' //for RxJava support
+    compile 'com.github.kittinunf.fuel:fuel:1.3.1' //for JVM
+    compile 'com.github.kittinunf.fuel:fuel-android:1.3.1' //for Android
+    compile 'com.github.kittinunf.fuel:fuel-rxjava:1.3.1' //for RxJava support
 }
 ```
 
@@ -148,7 +148,7 @@ Fuel.get("http://httpbin.org/get").response { request, response, result ->
 
 * [Result](https://github.com/kittinunf/Result) is a functional style data structure that represents data that contains result of *Success* or *Failure* but not both. It represents the result of an action that can be success (with result) or error.
 
-* Working with result is easy. You could [*fold*](https://github.com/kittinunf/Fuel/blob/master/fuel/src/test/kotlin/com/github/kittinunf/fuel/RequestTest.kt#L314), [*muliple declare*](https://github.com/kittinunf/Fuel/blob/master/fuel/src/test/kotlin/com/github/kittinunf/fuel/RequestAuthenticationTest.kt#L47) as because it is just a [data class](http://kotlinlang.org/docs/reference/data-classes.html) or do a simple ```when``` checking whether it is *Success* or *Failure*.
+* Working with result is easy. You could [*fold*](https://github.com/kittinunf/Fuel/blob/master/fuel/src/test/kotlin/com/github/kittinunf/fuel/RequestTest.kt#L324), [*destructure*](https://github.com/kittinunf/Fuel/blob/master/fuel/src/test/kotlin/com/github/kittinunf/fuel/RequestTest.kt#L266) as because it is just a [data class](http://kotlinlang.org/docs/reference/data-classes.html) or do a simple ```when``` checking whether it is *Success* or *Failure*.
 
 ### Response
 ``` Kotlin
@@ -160,9 +160,12 @@ fun response(handler: (Request, Response, Result<ByteArray, FuelError>) -> Unit)
 fun responseString(handler: (Request, Response, Result<String, FuelError>) -> Unit)
 ```
 
-### Response in [JSONObject](http://www.json.org/javadoc/org/json/JSONObject.html)
+### Response in Json
 ``` Kotlin
-fun responseJson(handler: (Request, Response, Result<JSONObject, FuelError>) -> Unit)
+fun responseJson(handler: (Request, Response, Result<Json, FuelError>) -> Unit)
+
+val jsonObject = json.obj() //JSONObject
+val jsonArray = json.array() //JSONArray
 ```
 
 ### Response in T (object)
@@ -192,6 +195,14 @@ Fuel.put("http://httpbin.org/put").response { request, response, result ->
 
 ``` Kotlin
 Fuel.delete("http://httpbin.org/delete").response { request, response, result ->
+}
+```
+
+### HEAD
+
+``` Kotlin
+Fuel.head("http://httpbin.org/get").response { request, response, result ->
+   // request body should be empty.
 }
 ```
 
@@ -252,19 +263,23 @@ Fuel.put("http://httpbin.org/put", listOf("foo" to "foo", "bar" to "bar")).respo
 }
 ```
 
-### Set request's timeout
+### Set request's timeout and read timeout
 Default timeout for a request is 15000 milliseconds.
+Default read timeout for a request is 15000 milliseconds.
 
 * Kotlin
 ```kotlin
 val timeout = 5000 // 5000 milliseconds = 5 seconds.
-"http://httpbin.org/get".httpGet().timeout(timeout).responseString { request, response, result -> }
+val readTimeout = 60000 // 60000 milliseconds = 1 minute.
+
+"http://httpbin.org/get".httpGet().timeout(timeout).readTimeout(readTimeout).responseString { request, response, result -> }
 ```
 
 * Java
 ``` Java
 int timeout = 5000 // 5000 milliseconds = 5 seconds.
-Fuel.get("http://httpbin.org/get", params).timeout(timeout).responseString(new Handler<String>() {
+int readTimeout = 60000 // 60000 milliseconds = 1 minute.
+Fuel.get("http://httpbin.org/get", params).timeout(timeout).readTimeout(readTimeout).responseString(new Handler<String>() {
     @Override
     public void failure(Request request, Response response, FuelError error) {
     	//do something when it is failure
@@ -324,18 +339,7 @@ Fuel.get("http://httpbin.org/basic-auth/$user/$password").authenticate(username,
 
 ### Validation
 
-* By default, the valid range for HTTP status code will be (200..299). However, it can be configurable
-``` Kotlin
-Fuel.get("http://httpbin.org/status/418").response { request, response, result ->
-    //result contains Error
-
-}
-
-//418 will pass the validator
-Fuel.get("http://httpbin.org/status/418").validate(400..499).response { request, response, result ->
-    //result contains data
-}
-```
+* By default, the valid range for HTTP status code will be (200..299).
 
 ### Cancel
 
@@ -473,7 +477,7 @@ val (request, response, result) = manager.request(Method.GET, "https://httpbin.o
 * Another example is that you might wanna add data into your Database, you can achieve that with providing `responseInterceptors` such as
 
 ``` Kotlin
-inline fun <reified T> DbResponseInterceptor<T>() =
+inline fun <reified T> DbResponseInterceptor() =
         { next: (Request, Response) -> Response ->
             { req: Request, res: Response ->
                 val db = DB.getInstance()
@@ -484,7 +488,7 @@ inline fun <reified T> DbResponseInterceptor<T>() =
                 next(req, res)
             }
         }
-        
+
 manager.addResponseInterceptor(DBResponseInterceptor<Dog>)
 manager.request(Method.GET, "http://www.example.com/api/dog/1").response() // Db interceptor will be called to intercept data and save into Database of your choice
 ```
@@ -527,6 +531,7 @@ fun <T : Any> Request.rx_object(deserializable: Deserializable<T>): Observable<T
 If you like Fuel, you might also like other libraries;
 * [Result](https://github.com/kittinunf/Result) - The modelling for success/failure of operations in Kotlin
 * [Kovenant](https://github.com/mplatvoet/kovenant) - Kovenant. Promises for Kotlin.
+* [Fuse](https://github.com/kittinunf/Fuse) - A simple generic LRU memory/disk cache for Android written in Kotlin
 
 ## Credits
 
